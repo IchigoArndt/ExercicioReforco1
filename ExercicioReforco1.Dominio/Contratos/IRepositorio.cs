@@ -11,6 +11,6 @@ namespace ExercicioReforco1.Dominio.Contratos
         T Adicionar(T entidade);
         T Atualizar(T entidade);
         IList<T> ObterTodosItens();
-        int Excluir(int id);
+        void Excluir(int id);
     }
 }

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExercicioReforco1.Infra
+namespace ExercicioReforco1.Service
 {
     public class Class1
     {
