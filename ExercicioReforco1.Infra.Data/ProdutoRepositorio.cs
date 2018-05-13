@@ -31,7 +31,7 @@ namespace ExercicioReforco1.Infra.Data
 
         public Produto Adicionar(Produto entidade)
         {
-            DB.Add(SQLInsert, GetParam(entidade));
+            DB.Insert(SQLInsert, GetParam(entidade));
             int id = ObterUltimoId();
             entidade.Id = id;
             return entidade;
@@ -70,7 +70,9 @@ namespace ExercicioReforco1.Infra.Data
 
         public IList<Produto> ObterTodosItens()
         {
-            return DB.GetAll(SQLGetAll, Converter);
+            IList<Produto> getAll = new List<Produto>();
+            getAll = DB.GetAll(SQLGetAll, Converter);
+            return getAll;
         }
 
         //Parametros para SQL
@@ -92,8 +94,8 @@ namespace ExercicioReforco1.Infra.Data
             Produto produto = new Produto();
             produto.Id = Convert.ToInt32(_reader["Id"]);
             produto.Nome = Convert.ToString(_reader["Nome"]);
-            produto.PrecoVenda = Convert.ToDouble(_reader["PrecoVenda"]);
-            produto.PrecoCusto = Convert.ToDouble(_reader["PrecoCusto"]);
+            produto.PrecoVenda = Convert.ToDecimal(_reader["PrecoVenda"]);
+            produto.PrecoCusto = Convert.ToDecimal(_reader["PrecoCusto"]);
             produto.DataFabricacao = Convert.ToDateTime(_reader["DataFabricacao"]);
             produto.DataVencimento = Convert.ToDateTime(_reader["DataValidade"]);
             produto.Disponivel = Convert.ToBoolean(_reader["Disponivel"]);

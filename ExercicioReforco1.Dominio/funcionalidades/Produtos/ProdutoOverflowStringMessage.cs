@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ExercicioReforco1.Dominio.funcionalidades.Produtos
 {
-    class ProdutoOverflowStringMessage : Exception
+    public class ProdutoOverflowStringMessage : Exception
     {
         public ProdutoOverflowStringMessage()
         {

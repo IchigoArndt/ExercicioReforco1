@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="ProdutoRepositorio.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="VendaRepositorio.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ExercicioReforco1.Dominio\ExercicioReforco1.Dominio.csproj">

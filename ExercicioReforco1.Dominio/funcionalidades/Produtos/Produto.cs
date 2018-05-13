@@ -11,14 +11,16 @@ namespace ExercicioReforco1.Dominio
     public class Produto : Entidade
     {
         public string Nome { get; set; }
-        public double PrecoVenda { get; set; }
-        public double PrecoCusto { get; set; }
+        public Decimal PrecoVenda { get; set; }
+        public Decimal PrecoCusto { get; set; }
         public bool Disponivel { get; set; }
         public DateTime DataFabricacao { get; set; }
         public DateTime DataVencimento { get; set; }
 
         public override void valida()
         {
+            if(string.IsNullOrEmpty(Nome))
+                throw new Exception("Nome não pode ficar vazio");
             if (Nome.Length <= 4 || Nome.Length > 30)
                 throw new ProdutoOverflowStringMessage("O nome deve ter entre 4 e 30 carateres");
             if (PrecoCusto >= PrecoVenda)

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ExercicioReforco1.Dominio.funcionalidades.Produtos
 {
-    class ProdutoIncorrectPriceException : Exception
+   public class ProdutoIncorrectPriceException : Exception
     {
         public ProdutoIncorrectPriceException()
         {

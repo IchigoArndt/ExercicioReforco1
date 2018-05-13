@@ -9,79 +9,136 @@ using System.Threading.Tasks;
 
 namespace ExercicioReforco1.Infra
 {
-    public class DB
+    public static class DB
     {
-        private static readonly string connectionStringName = ConfigurationManager.AppSettings.Get("connectionDB");
+        #region Attributes
 
-        private static readonly string providerName = ConfigurationManager.ConnectionStrings[connectionStringName].ProviderName;
+        /// <summary>
+        /// Propriedade de configurações (AppSettings)
+        /// </summary>
+        private static readonly string _connectionStringName = ConfigurationManager.AppSettings.Get("connectionString"); //Busca na tag appSettings em App.config a chave ConnectionStringName
 
-        private static readonly string connectionString = ConfigurationManager.ConnectionStrings[connectionStringName].ConnectionString;
+        private static readonly string _providerName = ConfigurationManager.AppSettings.Get("DataProvider"); //Busca na tag appSettings em App.config a chave DataProvider
 
-        private static readonly DbProviderFactory factory = DbProviderFactories.GetFactory(providerName);
+        private static readonly string _connectionString = ConfigurationManager.ConnectionStrings[_connectionStringName].ConnectionString;//Busca a connection string no arquivo App.config
+        private static readonly DbProviderFactory _factory = DbProviderFactories.GetFactory(_providerName); //Pega a factory lendo o providerName que está configurado no App.config
 
-        public DB()
+        #endregion Attributes
+
+        #region Properties
+
+        /// <summary>
+        /// Define o prefixo do parametro pelo seu provider
+        /// </summary>
+        public static string ParameterPrefix
         {
-        }
-
-        public static Dictionary<string, object> Add(string sql, Dictionary<string, object> parms)
-        {
-            using (var connection = factory.CreateConnection())
+            get
             {
-                connection.ConnectionString = connectionString;
-
-                using (DbCommand _command = factory.CreateCommand())
+                switch (_providerName)
                 {
-                    _command.Connection = connection;
-                    SetParameters(_command, parms);
-                    sql = AppendIdentitySelect(sql);
-                    _command.CommandText = sql;
+                    // Microsoft Access não tem suporte a esse tipo de comando
+                    case "System.Data.OleDb": return "@";
+                    case "System.Data.SqlClient": return "@";
+                    case "System.Data.OracleClient": return ":";
+                    case "MySql.Data.MySqlClient": return "?";
 
-                    connection.Open();
-
-                    _command.ExecuteScalar();
-
-                    return parms;
+                    default:
+                        return "@";
                 }
             }
         }
 
-        public static T GetById<T>(string sql, Func<IDataReader, T> convert, Dictionary<string, object> parms)
-        {
-            using (var connection = factory.CreateConnection())
-            {
-                connection.ConnectionString = connectionString;
+        #endregion Properties
 
-                using (var command = factory.CreateCommand())
+        /// <summary>
+        /// Método genérico para inserção
+        /// <param name="sql">Script SQL de Insert na tabela.</param>
+        /// <param name="parms">Array de parametros que serão adicionados no Insert. O seu valor está null por padrão.</param>
+        /// <param name="identitySelect">Marcação que define se precisa que retorne o id do item adicionado. O seu valor está true por padrão.</param>
+        /// <returns>Retorna o id selecionado ou 0.</returns>
+        public static int Insert(string sql, Dictionary<string, object> parms = null, bool identitySelect = true)
+        {
+            sql = string.Format(sql, ParameterPrefix);
+
+            using (var connection = _factory.CreateConnection())
+            {
+                connection.ConnectionString = _connectionString;
+
+                using (var command = _factory.CreateCommand())
                 {
                     command.Connection = connection;
-                    command.CommandText = sql;
-                    SetParameters(command, parms);
+                    command.SetParameters(parms); // Extension method
+                    command.CommandText = identitySelect ? sql.AppendIdentitySelect() : sql; // Extension method
 
                     connection.Open();
 
-                    T t = default(T);
+                    int id = 0;
 
-                    var reader = command.ExecuteReader();
+                    if (identitySelect)
+                        id = Convert.ToInt32(command.ExecuteScalar());
+                    else
+                        command.ExecuteNonQuery();
 
-                    if (reader.Read())
-                        t = convert(reader);
-
-                    return t;
+                    return id;
                 }
             }
         }
 
-        public static IList<T> GetAllById<T>(string sql, Func<IDataReader, T> convert, Dictionary<string, object> parms)
+        /// <summary>
+        ///  Método genérico para update
+        /// </summary>
+        /// <param name="sql">Script SQL de Update na tabela.</param>
+        /// <param name="parms">Array de parametros que serão adicionados no Insert. O seu valor está null por padrão.</param>
+        public static void Update(string sql, Dictionary<string, object> parms = null)
         {
-            using (var connection = factory.CreateConnection())
-            {
-                connection.ConnectionString = connectionString;
+            sql = string.Format(sql, ParameterPrefix);
 
-                using (var command = factory.CreateCommand())
+            using (var connection = _factory.CreateConnection())
+            {
+                connection.ConnectionString = _connectionString;
+
+                using (var command = _factory.CreateCommand())
                 {
                     command.Connection = connection;
                     command.CommandText = sql;
-                    SetParameters(command, parms);
+                    command.SetParameters(parms); //Extesion Method
+
+                    connection.Open();
+
+                    command.ExecuteNonQuery();
+
+                    command.Parameters.Clear();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Método genérico para delete
+        /// </summary>
+        /// <param name="sql">Script SQL de Update na tabela.</param>
+        /// <param name="parms">Array de parametros que serão adicionados no Insert. O seu valor está null por padrão.</param>
+        public static void Delete(string sql, Dictionary<string, object> parms = null)
+        {
+            Update(sql, parms);
+        }
+
+        /// <summary>
+        /// Método genérico para select
+        /// </summary>
+        /// <param name="sql">Script SQL de SELECT na tabela.</param
+        /// <param name="make">Delegate que interpreta e atribui os valores da consulta para o objeto.</param>
+        /// <param name="parms">Array de parametros que serão adicionados no Insert. O seu valor está null por padrão.</param>
+        public static List<T> GetAll<T>(string sql, Func<IDataReader, T> Make, Dictionary<string, object> parms = null)
+        {
+            using (var connection = _factory.CreateConnection())
+            {
+                connection.ConnectionString = _connectionString;
+
+                using (var command = _factory.CreateCommand())
+                {
+                    command.Connection = connection;
+                    command.CommandText = sql;
+                    command.SetParameters(parms); //Extesion Method
 
                     connection.Open();
 
@@ -90,100 +147,36 @@ namespace ExercicioReforco1.Infra
 
                     while (reader.Read())
                     {
-                        var obj = convert(reader);
+                        var obj = Make(reader);
                         list.Add(obj);
                     }
+
+                    command.Parameters.Clear();
 
                     return list;
                 }
             }
         }
 
-        public static IList<T> GetAll<T>(string sql, Func<IDataReader, T> convert, Dictionary<string, object> parms = null)
+        /// <summary>
+        /// Método genérico para select
+        /// </summary>
+        /// <param name="sql">Script SQL de SELECT na tabela.</param
+        /// <param name="make">Delegate que interpreta e atribui os valores da consulta para o objeto.</param>
+        /// <param name="parms">Array de parametros que serão adicionados no Insert. O seu valor está null por padrão.</param>
+        public static T Get<T>(string sql, Func<IDataReader, T> Make, Dictionary<string, object> parms = null)
         {
-            using (var connection = factory.CreateConnection())
-            {
-                connection.ConnectionString = connectionString;
+            sql = string.Format(sql, ParameterPrefix);
 
-                using (var command = factory.CreateCommand())
+            using (var connection = _factory.CreateConnection())
+            {
+                connection.ConnectionString = _connectionString;
+
+                using (var command = _factory.CreateCommand())
                 {
                     command.Connection = connection;
                     command.CommandText = sql;
-                    SetParameters(command, parms);
-
-                    try
-                    {
-                        connection.Open();
-
-                        var list = new List<T>();
-                        var reader = command.ExecuteReader();
-
-                        while (reader.Read())
-                        {
-                            var obj = convert(reader);
-                            list.Add(obj);
-                        }
-
-                        return list;
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new Exception(ex.Message);
-                    }
-
-                }
-            }
-        }
-
-        public static void Update(string sql, Dictionary<string, object> parms)
-        {
-            using (var connection = factory.CreateConnection())
-            {
-                connection.ConnectionString = connectionString;
-
-                using (var command = factory.CreateCommand())
-                {
-                    command.Connection = connection;
-                    command.CommandText = sql;
-                    SetParameters(command, parms);
-
-                    connection.Open();
-                    command.ExecuteNonQuery();
-                }
-            }
-        }
-
-        public static void Delete(string sql, Dictionary<string, object> parms)
-        {
-            using (var connection = factory.CreateConnection())
-            {
-                connection.ConnectionString = connectionString;
-
-                using (var command = factory.CreateCommand())
-                {
-                    command.Connection = connection;
-                    sql = AppendIdentitySelect(sql);
-                    SetParameters(command, parms);
-
-                    command.CommandText = sql;
-
-                    connection.Open();
-                    command.ExecuteNonQuery();
-                }
-            }
-        }
-
-        public static T GetByName<T>(string sql, Func<IDataReader, T> convert, Dictionary<string, object> parms)
-        {
-            using (var connection = factory.CreateConnection())
-            {
-                connection.ConnectionString = connectionString;
-
-                using (var command = factory.CreateCommand())
-                {
-                    command.Connection = connection;
-                    command.CommandText = sql;
-                    SetParameters(command, parms);
+                    command.SetParameters(parms); //Extesion Method
 
                     connection.Open();
 
@@ -192,16 +185,25 @@ namespace ExercicioReforco1.Infra
                     var reader = command.ExecuteReader();
 
                     if (reader.Read())
-                        t = convert(reader);
+                        t = Make(reader);
+
+                    command.Parameters.Clear();
 
                     return t;
                 }
             }
         }
 
-        public static void SetParameters(DbCommand command, Dictionary<string, object> parms)
+        #region Private methods
+
+        /// <summary>
+        /// Métode de extensão da classe DbCommand que seta os parametros adicionando o seus respectivos prefixos.
+        /// </summary>
+        /// <param name="command">Classe command que o método utilizará para adcionar os parametros.</param>
+        /// <param name="parms">Parametros do script.</param>
+        private static void SetParameters(this DbCommand command, Dictionary<string, object> parms)
         {
-            if (parms != null && parms.Count > 0)
+            if (parms != null)
             {
                 foreach (var item in parms)
                 {
@@ -214,16 +216,24 @@ namespace ExercicioReforco1.Infra
             }
         }
 
-        public static string AppendIdentitySelect(string sql)
+        /// <summary>
+        /// Concatena no script de inserção o select do id
+        /// </summary>
+        /// <param name="sql">Script de Insert</param>
+        /// <returns></returns>
+        private static string AppendIdentitySelect(this string sql)
         {
-            switch (providerName)
+            switch (_providerName)
             {
                 // Microsoft Access não tem suporte a esse tipo de comando
-                case "System.Data.SqlClient": return sql + ";SELECT SCOPE_IDENTITY();";
-                case "MySql.Data.MySqlClient": return sql;
-                default: return sql + ";SELECT @@IDENTITY;";
+                case "System.Data.OleDb": return sql;
+                case "System.Data.SqlClient": return sql + ";SELECT SCOPE_IDENTITY()";
+                case "System.Data.OracleClient": return sql + ";SELECT MySequence.NEXTVAL FROM DUAL";
+                case "Firebird.Data.FbClient": return sql + ";GENERATOR(x=>x.identity)";
+                default: return sql + ";SELECT @@IDENTITY";
             }
         }
 
+        #endregion Private methods
     }
 }

@@ -60,5 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Build Include="TBProduto.sql" />
+    <Build Include="TBVenda.sql" />
+    <Build Include="TBVenda_Produto.sql" />
   </ItemGroup>
 </Project>
